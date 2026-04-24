@@ -19,7 +19,7 @@ jobs:
       - uses: reviewdog/action-rubocop@v2
         with:
           rubocop_version: gemfile
-          rubocop_extensions: 'rubocop-rails:gemfile rubocop-rspec:gemfile rubocop-performance:gemfile'
+          rubocop_extensions: 'rubocop-rails:gemfile rubocop-rspec:gemfile rubocop-rspec_rails:gemfile rubocop-performance:gemfile'
           reporter: ${{ github.event_name == 'pull_request' && 'github-pr-check' || 'github-check' }}
           fail_level: error
           rubocop_flags: --parallel
