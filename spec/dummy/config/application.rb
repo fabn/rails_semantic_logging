@@ -10,7 +10,7 @@ require 'rails_semantic_logging'
 module Dummy
   class Application < Rails::Application
     config.root = File.expand_path('..', __dir__)
-    config.load_defaults 7.1
+    config.load_defaults Rails::VERSION::STRING.to_f
     config.eager_load = false
     config.active_job.queue_adapter = :test
 

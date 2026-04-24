@@ -1,0 +1,26 @@
+name: RuboCop
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  rubocop:
+    name: RuboCop
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+      - uses: reviewdog/action-rubocop@v2
+        with:
+          rubocop_version: gemfile
+          rubocop_extensions: 'rubocop-rails:gemfile rubocop-rspec:gemfile rubocop-performance:gemfile'
+          reporter: ${{ github.event_name == 'pull_request' && 'github-pr-check' || 'github-check' }}
+          fail_level: error
+          rubocop_flags: --parallel
+          use_bundler: true

@@ -22,6 +22,6 @@ Gem::Specification.new do |spec|
   spec.require_paths = ['lib']
 
   spec.add_dependency 'anyway_config', '>= 2.0'
-  spec.add_dependency 'rails', '>= 7.0'
+  spec.add_dependency 'rails', '>= 7.1'
   spec.add_dependency 'rails_semantic_logger', '>= 4.0'
 end
