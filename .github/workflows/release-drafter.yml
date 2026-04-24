@@ -14,7 +14,28 @@ jobs:
       contents: write
       pull-requests: write
     runs-on: ubuntu-latest
+    outputs:
+      tag_name: ${{ steps.release-drafter.outputs.tag_name }}
     steps:
       - uses: release-drafter/release-drafter@v6
+        id: release-drafter
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  write_version:
+    name: Write version file
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    needs:
+      - update_release_draft
+    steps:
+      - uses: actions/checkout@v6
+      - name: Update VERSION file
+        run: echo -n "${{ needs.update_release_draft.outputs.tag_name }}" | sed 's/^v//' > VERSION
+      - name: Commit version file
+        uses: EndBug/add-and-commit@v9
+        with:
+          add: 'VERSION'
+          message: 'Bump version to ${{ needs.update_release_draft.outputs.tag_name }}'

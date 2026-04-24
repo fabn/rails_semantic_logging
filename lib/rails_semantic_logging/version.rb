@@ -1,3 +1,3 @@
 module RailsSemanticLogging
-  VERSION = '0.1.0'.freeze
+  VERSION = File.read(File.expand_path('../../VERSION', __dir__)).chomp.freeze
 end
