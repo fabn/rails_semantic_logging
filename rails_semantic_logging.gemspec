@@ -17,7 +17,7 @@ Gem::Specification.new do |spec|
   spec.metadata['changelog_uri'] = 'https://github.com/fabn/rails_semantic_logging/releases'
   spec.metadata['rubygems_mfa_required'] = 'true'
 
-  spec.files = Dir['lib/**/*', 'README.md', 'LICENSE.txt']
+  spec.files = Dir['lib/**/*', 'VERSION', 'README.md', 'LICENSE.txt']
   spec.require_paths = ['lib']
 
   spec.add_dependency 'anyway_config', '~> 2.0'
