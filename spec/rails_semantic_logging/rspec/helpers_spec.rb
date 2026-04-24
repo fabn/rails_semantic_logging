@@ -38,7 +38,7 @@ RSpec.describe RailsSemanticLogging::RSpec::Helpers do
 
     it 'restores stdout after block' do
       original = $stdout
-      silence_stdout { print 'test' }
+      silence_stdout { $stdout.write('test') } # rubocop:disable RSpec/Output
       expect($stdout).to equal(original)
     end
   end
