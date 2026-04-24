@@ -6,3 +6,4 @@ Gemfile.lock
 /coverage/
 /spec/dummy/tmp/
 *.gem
+.claude/settings.local.json
