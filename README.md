@@ -63,6 +63,26 @@ end
 
 Configuration can also be set via YAML (`config/rails_semantic_logging.yml`) or environment variables (`RAILS_SEMANTIC_LOGGING_QUIET_ASSETS=false`) thanks to [anyway_config](https://github.com/palkan/anyway_config).
 
+#### Formatter override via YAML
+
+```yaml
+# config/rails_semantic_logging.yml
+production:
+  production_formatter: json
+
+development:
+  development_formatter: color
+```
+
+#### Formatter override via environment variables
+
+```bash
+RAILS_SEMANTIC_LOGGING_PRODUCTION_FORMATTER=datadog bin/rails server
+RAILS_SEMANTIC_LOGGING_DEVELOPMENT_FORMATTER=color bin/rails server
+```
+
+Both string and symbol values are accepted for formatter options (e.g. `"datadog"` from YAML/ENV is equivalent to `:datadog` in Ruby).
+
 ### Configuration Options
 
 | Option | Default | Description |
