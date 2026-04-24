@@ -1,0 +1,29 @@
+ENV['RAILS_ENV'] = 'test'
+
+require_relative 'dummy/config/environment'
+
+require 'rspec/rails'
+require 'rails_semantic_logging/rspec/matchers'
+require 'rails_semantic_logging/rspec/helpers'
+
+# Install test helpers (appender validation, LOG env var support)
+RailsSemanticLogging::RSpec::Helpers.install!
+
+RSpec.configure do |config|
+  config.disable_monkey_patching!
+  config.order = :random
+  Kernel.srand config.seed
+
+  config.expect_with :rspec do |expectations|
+    expectations.include_chain_clauses_in_custom_matcher_descriptions = true
+  end
+
+  config.mock_with :rspec do |mocks|
+    mocks.verify_partial_doubles = true
+  end
+
+  config.shared_context_metadata_behavior = :apply_to_host_groups
+
+  config.infer_spec_type_from_file_location!
+  config.include RailsSemanticLogging::RSpec::Matchers
+end
