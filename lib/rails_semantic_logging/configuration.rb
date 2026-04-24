@@ -50,6 +50,7 @@ module RailsSemanticLogging
     private
 
     def resolve_formatter(value)
+      value = value.to_sym if value.is_a?(String)
       return value unless value.is_a?(Symbol)
       return RailsSemanticLogging::Formatters::Datadog.new if value == :datadog
 

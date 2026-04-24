@@ -66,6 +66,23 @@ RSpec.describe RailsSemanticLogging::Configuration do
       config.production_formatter = :color
       expect(config.formatter_for('production')).to eq(:color)
     end
+
+    context 'with string values from YAML or ENV' do
+      it 'resolves "datadog" string to Datadog formatter' do
+        config.production_formatter = 'datadog'
+        expect(config.formatter_for('production')).to be_a(RailsSemanticLogging::Formatters::Datadog)
+      end
+
+      it 'resolves "color" string to :color symbol' do
+        config.development_formatter = 'color'
+        expect(config.formatter_for('development')).to eq(:color)
+      end
+
+      it 'resolves "json" string to :json symbol' do
+        config.production_formatter = 'json'
+        expect(config.formatter_for('production')).to eq(:json)
+      end
+    end
   end
 
   describe '#log_level_for' do
