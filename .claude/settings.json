@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bundle exec rspec*)",
+      "Bash(bundle exec rubocop*)",
+      "Bash(bundle exec rake*)",
+      "Bash(gem build*)",
+      "mcp__context7__*"
+    ]
+  }
+}
