@@ -1,7 +1,13 @@
 # Monkey patch for Datadog's ActiveJob LogInjection to use hash-style
-# correlation tags instead of string-style. This is necessary because
-# we patch ActiveJob::Logging to use named tags (job_class, job_id, queue),
-# so Datadog must also use hash-style tags for compatibility with SemanticLogger.
+# correlation tags instead of string-style. SemanticLogger.tagged only
+# routes Hash arguments to named_tags — a String goes into positional tags,
+# which hides dd.trace_id/dd.span_id from Datadog's standard-attribute
+# mapping and breaks trace ↔ log correlation in job logs.
+#
+# We redefine the method on the upstream PerformNowPatch module in place
+# rather than replacing the LogInjection constant, so
+# Datadog::Tracing::Contrib::ActiveJob::Patcher#inject_log_correlation
+# (which references LogInjection::PerformNowPatch by name) keeps working.
 
 module RailsSemanticLogging
   module Datadog
@@ -9,24 +15,23 @@ module RailsSemanticLogging
       def self.apply!
         return unless defined?(::Datadog::Tracing::Contrib::ActiveJob::LogInjection)
 
-        # Ensure the SemanticLogger ActiveJob extension is loaded first
         require 'rails_semantic_logger/extensions/active_job/logging'
 
-        # Replace the original module with our patched version
-        ::Datadog::Tracing::Contrib::ActiveJob.send(:remove_const, :LogInjection)
-        ::Datadog::Tracing::Contrib::ActiveJob.const_set(:LogInjection, PatchedLogInjection)
+        upstream = ::Datadog::Tracing::Contrib::ActiveJob::LogInjection
+        return unless upstream.const_defined?(:PerformNowPatch, false)
+
+        patch_perform_now(upstream::PerformNowPatch)
       end
 
-      # Replacement module that uses correlation.to_h instead of log_correlation
-      module PatchedLogInjection
-        def self.included(base)
-          base.class_eval do
-            around_perform do |_, block|
-              if ::Datadog.configuration.tracing.log_injection && logger.respond_to?(:tagged)
-                logger.tagged(::Datadog::Tracing.correlation.to_h, &block)
-              else
-                block.call
-              end
+      def self.patch_perform_now(mod)
+        mod.module_eval do
+          remove_method(:perform_now) if method_defined?(:perform_now, false)
+
+          define_method(:perform_now) do
+            if ::Datadog.configuration.tracing.log_injection && logger.respond_to?(:tagged)
+              logger.tagged(::Datadog::Tracing.correlation.to_h) { super() }
+            else
+              super()
             end
           end
         end
