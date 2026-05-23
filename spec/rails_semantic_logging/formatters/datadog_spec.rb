@@ -87,11 +87,11 @@ RSpec.describe RailsSemanticLogging::Formatters::Datadog do
       end
 
       it 'extracts http.method and http.url_details.path from the message' do
-        log_entry.exception = ActionController::RoutingError.new('No route matches [GET] "/shampoo.htm/30dynamic_details"')
+        log_entry.exception = ActionController::RoutingError.new('No route matches [GET] "/products/123/details"')
 
         parsed = JSON.parse(formatter.call(log_entry, appender))
         expect(parsed.dig('http', 'method')).to eq('GET')
-        expect(parsed.dig('http', 'url_details', 'path')).to eq('/shampoo.htm/30dynamic_details')
+        expect(parsed.dig('http', 'url_details', 'path')).to eq('/products/123/details')
       end
 
       it 'does not overwrite http fields already set by the payload' do
