@@ -183,6 +183,14 @@ When Datadog tracing is active, the formatter injects: `dd.trace_id`, `dd.span_i
 }
 ```
 
+### Routing error enrichment
+
+When an `ActionController::RoutingError` is logged, the formatter extracts the
+HTTP method and path from the exception message (`No route matches [GET] "/foo"`)
+and populates `http.method` and `http.url_details.path` on the log event. This
+keeps unmatched-route logs correlated with the original request URL in Datadog
+without requiring a custom log pipeline.
+
 ## Formatters
 
 ### JSON Formatter `:json`
