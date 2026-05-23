@@ -47,6 +47,12 @@ RSpec.describe RailsSemanticLogging::Formatters::Datadog do
       parsed = JSON.parse(formatter.call(log_entry, appender))
       expect(parsed.values).to_not include(nil, '', [])
     end
+
+    it 'keeps false and zero values in the payload' do
+      log_entry.payload = { bot: false, count: 0, name: nil, empty: '' }
+      parsed = JSON.parse(formatter.call(log_entry, appender))
+      expect(parsed['payload']).to eq('bot' => false, 'count' => 0)
+    end
   end
 
   describe '#duration' do
@@ -112,6 +118,26 @@ RSpec.describe RailsSemanticLogging::Formatters::Datadog do
     end
   end
 
+  describe 'log event isolation' do
+    it 'does not mutate log.payload while formatting' do
+      log_entry.payload = { status: 200, method: 'GET', host: 'api.example.com', user_agent: 'Mozilla', custom: 'kept', bot: false }
+      payload_before = log_entry.payload.dup
+
+      formatter.call(log_entry, appender)
+
+      expect(log_entry.payload).to eq(payload_before)
+    end
+
+    it 'does not mutate log.named_tags while formatting' do
+      log_entry.named_tags = { request_id: 'abc-123', client_ip: '10.0.0.1', user_id: 42, custom: 'kept' }
+      named_tags_before = log_entry.named_tags.dup
+
+      formatter.call(log_entry, appender)
+
+      expect(log_entry.named_tags).to eq(named_tags_before)
+    end
+  end
+
   describe 'HTTP payload remapping' do
     it 'maps Rails payload to nested http object' do
       log_entry.payload = { status: 200, method: 'GET', path: '/api/test' }
@@ -141,6 +167,25 @@ RSpec.describe RailsSemanticLogging::Formatters::Datadog do
       log_entry.payload = { status: 200 }
       parsed = JSON.parse(formatter.call(log_entry, appender))
       expect(parsed).to_not have_key('payload')
+    end
+  end
+
+  describe 'metric and dimensions' do
+    it 'exposes metric, metric_amount and dimensions at the top level' do
+      log_entry.metric = 'feed_size'
+      log_entry.metric_amount = 12_345
+      log_entry.dimensions = { feed: 'amazon', region: 'eu' }
+
+      parsed = JSON.parse(formatter.call(log_entry, appender))
+      expect(parsed['metric']).to eq('feed_size')
+      expect(parsed['metric_amount']).to eq(12_345)
+      expect(parsed['dimensions']).to eq('feed' => 'amazon', 'region' => 'eu')
+    end
+
+    it 'omits dimensions when blank' do
+      log_entry.metric = 'feed_size'
+      parsed = JSON.parse(formatter.call(log_entry, appender))
+      expect(parsed).to_not have_key('dimensions')
     end
   end
 

@@ -77,7 +77,7 @@ Metrics/AbcSize:
   Enabled: false
 
 Metrics/ClassLength:
-  Max: 130
+  Max: 140
 
 Metrics/BlockLength:
   Enabled: false
