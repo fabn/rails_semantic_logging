@@ -1,13 +1,22 @@
-# Monkey patch for Datadog's ActiveJob LogInjection to use hash-style
-# correlation tags instead of string-style. SemanticLogger.tagged only
-# routes Hash arguments to named_tags — a String goes into positional tags,
-# which hides dd.trace_id/dd.span_id from Datadog's standard-attribute
-# mapping and breaks trace ↔ log correlation in job logs.
+# Monkey patches Datadog's ActiveJob LogInjection to use hash-style
+# correlation tags instead of string-style.
 #
-# We redefine the method on the upstream PerformNowPatch module in place
-# rather than replacing the LogInjection constant, so
-# Datadog::Tracing::Contrib::ActiveJob::Patcher#inject_log_correlation
-# (which references LogInjection::PerformNowPatch by name) keeps working.
+# Background: Datadog ships LogInjection sub-modules (PerformNowPatch for
+# Rails 6+, EnqueuePatch for the singleton enqueue path) and patches
+# ActiveJob::Base by `prepend`ing them. By default they call
+# `Datadog::Tracing.log_correlation`, which returns a flat string
+# ("dd.trace_id=... dd.span_id=...") and ends up under `event.tags`.
+#
+# Once we patch ActiveJob::Logging#tag_logger to emit named tags, we want
+# Datadog correlation to land in `named_tags` too, so traces and logs
+# correlate properly in the Datadog UI. We achieve that by re-defining
+# `perform_now` and `enqueue` on Datadog's own patch modules to call
+# `Datadog::Tracing.correlation.to_h` and pass the resulting hash to
+# `logger.tagged`.
+#
+# Because Datadog prepends those modules into ActiveJob::Base, our
+# re-definitions take effect on every method dispatch — independent of
+# load order, as long as `apply!` runs before any job is executed.
 
 module RailsSemanticLogging
   module Datadog
@@ -15,23 +24,37 @@ module RailsSemanticLogging
       def self.apply!
         return unless defined?(::Datadog::Tracing::Contrib::ActiveJob::LogInjection)
 
+        # Ensure the SemanticLogger ActiveJob extension is loaded before we
+        # override Datadog's patches, so the named-tags `tag_logger` is in place.
         require 'rails_semantic_logger/extensions/active_job/logging'
 
-        upstream = ::Datadog::Tracing::Contrib::ActiveJob::LogInjection
-        return unless upstream.const_defined?(:PerformNowPatch, false)
-
-        patch_perform_now(upstream::PerformNowPatch)
+        patch_perform_now
+        patch_enqueue
       end
 
-      def self.patch_perform_now(mod)
-        mod.module_eval do
-          remove_method(:perform_now) if method_defined?(:perform_now, false)
+      def self.patch_perform_now
+        return unless defined?(::Datadog::Tracing::Contrib::ActiveJob::LogInjection::PerformNowPatch)
 
+        ::Datadog::Tracing::Contrib::ActiveJob::LogInjection::PerformNowPatch.module_eval do
           define_method(:perform_now) do
             if ::Datadog.configuration.tracing.log_injection && logger.respond_to?(:tagged)
               logger.tagged(::Datadog::Tracing.correlation.to_h) { super() }
             else
               super()
+            end
+          end
+        end
+      end
+
+      def self.patch_enqueue
+        return unless defined?(::Datadog::Tracing::Contrib::ActiveJob::LogInjection::EnqueuePatch)
+
+        ::Datadog::Tracing::Contrib::ActiveJob::LogInjection::EnqueuePatch.module_eval do
+          define_method(:enqueue) do |*args, **kwargs, &block|
+            if ::Datadog.configuration.tracing.log_injection && logger.respond_to?(:tagged)
+              logger.tagged(::Datadog::Tracing.correlation.to_h) { super(*args, **kwargs, &block) }
+            else
+              super(*args, **kwargs, &block)
             end
           end
         end
