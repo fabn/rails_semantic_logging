@@ -35,7 +35,7 @@ jobs:
       - name: Update VERSION file
         run: echo -n "${{ needs.update_release_draft.outputs.tag_name }}" | sed 's/^v//' > VERSION
       - name: Commit version file
-        uses: EndBug/add-and-commit@v9
+        uses: EndBug/add-and-commit@v10
         with:
           add: 'VERSION'
           message: 'Bump version to ${{ needs.update_release_draft.outputs.tag_name }}'
