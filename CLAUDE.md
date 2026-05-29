@@ -50,7 +50,7 @@ The Railtie runs its initializer **before** `rails_semantic_logger`'s `:initiali
 - **`ActionController::DefaultPayload`** — Concern included in controllers via `on_load`. Enriches `append_info_to_payload` with `full_path`, `host`, `user_agent`, `referer`.
 - **`JobLogging::ActiveJobPatch`** — Converts positional `tag_logger(class, id)` calls to named tags (`job_class`, `job_id`, `queue`).
 - **`JobLogging::SidekiqPatch`** — Wraps `Sidekiq::JobLogger#call` with `SemanticLogger.tagged` since Sidekiq thread context is lost in SemanticLogger's formatting thread.
-- **`Datadog::LogInjection`** — Monkey-patches `Datadog::Tracing::Contrib::ActiveJob::LogInjection` to use `correlation.to_h` (hash tags) instead of `log_correlation` (string tags) for compatibility with the named-tags approach.
+- **`Datadog::LogInjection`** — Re-defines `perform_now` (and `enqueue`) on Datadog's `Tracing::Contrib::ActiveJob::LogInjection` sub-modules to use `correlation.to_h` (hash tags) instead of `log_correlation` (string tags) for compatibility with the named-tags approach. Datadog prepends those sub-modules onto `ActiveJob::Base`, so re-defining the methods on them takes effect on the live class without depending on load order.
 
 ### RSpec Helpers (for consuming apps)
 
