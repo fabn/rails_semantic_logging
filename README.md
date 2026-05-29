@@ -130,6 +130,15 @@ When `default_payload` is enabled (default), controller request logs include:
 
 When Datadog tracing is active, the formatter injects: `dd.trace_id`, `dd.span_id`, `dd.env`, `dd.service`, `dd.version`.
 
+#### Routing error enrichment
+
+`rails_semantic_logger` logs unmatched routes as a real `ActionController::RoutingError`.
+When the formatter sees one, it parses the standard `No route matches [GET] "/foo"`
+message and populates `http.method` and `http.url_details.path` on the log event.
+This keeps unmatched-route logs correlated with the original request URL in Datadog
+without requiring a custom server-side log pipeline. Actual request data (when present
+in the payload) always wins over the message-derived fields.
+
 ### Example: Complete request log (production)
 
 ```json

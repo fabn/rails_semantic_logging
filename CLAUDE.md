@@ -46,7 +46,7 @@ The Railtie runs its initializer **before** `rails_semantic_logger`'s `:initiali
 ### Key Components
 
 - **`Railtie`** (`lib/rails_semantic_logging/railtie.rb`) — Central wiring point. Configures `rails_semantic_logger`, injects `DefaultPayload` into controllers, patches ActiveJob/Sidekiq/Datadog via `ActiveSupport.on_load` and `after_initialize`.
-- **`Formatters::Datadog`** (`lib/rails_semantic_logging/formatters/datadog.rb`) — Extends `SemanticLogger::Formatters::Raw`. Remaps named_tags (client_ip, request_id, dd.*, user_*) and HTTP payload fields to Datadog standard attribute paths. Generates Apache-style messages for completed requests.
+- **`Formatters::Datadog`** (`lib/rails_semantic_logging/formatters/datadog.rb`) — Extends `SemanticLogger::Formatters::Raw`. Remaps named_tags (client_ip, request_id, dd.*, user_*) and HTTP payload fields to Datadog standard attribute paths. Generates Apache-style messages for completed requests. Parses `ActionController::RoutingError` messages (`No route matches [GET] "/foo"`) into `http.method` / `http.url_details.path` so unmatched-route logs stay correlated with the request URL.
 - **`ActionController::DefaultPayload`** — Concern included in controllers via `on_load`. Enriches `append_info_to_payload` with `full_path`, `host`, `user_agent`, `referer`.
 - **`JobLogging::ActiveJobPatch`** — Converts positional `tag_logger(class, id)` calls to named tags (`job_class`, `job_id`, `queue`).
 - **`JobLogging::SidekiqPatch`** — Wraps `Sidekiq::JobLogger#call` with `SemanticLogger.tagged` since Sidekiq thread context is lost in SemanticLogger's formatting thread.

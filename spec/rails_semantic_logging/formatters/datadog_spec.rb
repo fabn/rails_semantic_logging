@@ -80,6 +80,40 @@ RSpec.describe RailsSemanticLogging::Formatters::Datadog do
       expect(parsed.dig('error', 'message')).to eq('something went wrong')
       expect(parsed.dig('error', 'stack')).to eq("line1\nline2")
     end
+
+    context 'with an ActionController::RoutingError' do
+      it 'extracts http.method and http.url_details.path from the message' do
+        log_entry.exception = ActionController::RoutingError.new('No route matches [GET] "/products/123/details"')
+
+        parsed = JSON.parse(formatter.call(log_entry, appender))
+        expect(parsed.dig('http', 'method')).to eq('GET')
+        expect(parsed.dig('http', 'url_details', 'path')).to eq('/products/123/details')
+      end
+
+      it 'still maps the exception to the nested error object' do
+        log_entry.exception = ActionController::RoutingError.new('No route matches [GET] "/foo"')
+
+        parsed = JSON.parse(formatter.call(log_entry, appender))
+        expect(parsed.dig('error', 'kind')).to eq('ActionController::RoutingError')
+        expect(parsed.dig('error', 'message')).to eq('No route matches [GET] "/foo"')
+      end
+
+      it 'lets actual request data win over the message-derived fields' do
+        log_entry.exception = ActionController::RoutingError.new('No route matches [GET] "/foo"')
+        log_entry.payload = { method: 'POST', path: '/bar' }
+
+        parsed = JSON.parse(formatter.call(log_entry, appender))
+        expect(parsed.dig('http', 'method')).to eq('POST')
+        expect(parsed.dig('http', 'url_details', 'path')).to eq('/bar')
+      end
+
+      it 'ignores messages that do not match the routing error pattern' do
+        log_entry.exception = ActionController::RoutingError.new('Some other routing problem')
+
+        parsed = JSON.parse(formatter.call(log_entry, appender))
+        expect(parsed['http']).to be_nil
+      end
+    end
   end
 
   describe 'HTTP payload remapping' do
