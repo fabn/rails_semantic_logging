@@ -54,7 +54,8 @@ The Railtie runs its initializer **before** `rails_semantic_logger`'s `:initiali
 
 ### RSpec Helpers (for consuming apps)
 
-- **`RSpec::Matchers#log_semantic`** — Block matcher using an in-memory appender. Matches on `level`, `message` (string or regex), `named_tags`, `payload`.
+- **`RSpec::Matchers#log_semantic`** — Declarative block matcher using an in-memory appender. Returns true if any captured log matches `level` / `message` (string or regex) / `named_tags` / `payload`. Use for "did this get logged?" yes/no assertions.
+- **`RSpec::Matchers#have_logged_message`** — Imperative block matcher. Finds the first event matching the expected message (String / Regex / RSpec matcher) and yields the `SemanticLogger::Log` to a user block via `.with_formatted_event { |event, formatted| ... }`. The user block can run arbitrary expectations on `event.payload` / `event.named_tags` and on the JSON-parsed formatter output. The log event passed to the block is duplicated before formatting so a misbehaving formatter cannot mutate it.
 - **`RSpec::Helpers.install!`** — Installs `with_logging`/`with_ar_logging` helpers, validates single-appender-at-trace-level setup, enables `LOG` env var support.
 
 ### Documentation Lookup

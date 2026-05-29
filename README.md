@@ -204,9 +204,9 @@ Plain structured JSON without Datadog-specific field mapping. Useful for non-Dat
 
 Uses the built-in `SemanticLogger::Formatters::Color` for human-readable development output.
 
-## RSpec Matcher
+## RSpec Matchers
 
-Include the matcher module in your spec config:
+Include the matchers module in your spec config:
 
 ```ruby
 require 'rails_semantic_logging/rspec/matchers'
@@ -216,13 +216,45 @@ RSpec.configure do |config|
 end
 ```
 
-Usage:
+Two matchers are provided. They cover complementary use cases.
+
+### `log_semantic` — declarative "was X logged?" assertion
+
+Returns a boolean: true if **any** captured log line matches all the supplied criteria. Use it when the question is "did this happen?".
 
 ```ruby
 expect { logger.info("hello") }.to log_semantic(level: :info, message: /hello/)
 expect { logger.warn("oops", key: "val") }.to log_semantic(payload: { key: "val" })
 expect { do_work }.to log_semantic(named_tags: { job_class: 'MyJob' })
 ```
+
+### `have_logged_message` — find a specific log and assert on it
+
+Finds the first log event whose message matches the expected pattern, then hands the raw `SemanticLogger::Log` (and, optionally, a formatted version) over to a user block so you can make arbitrary assertions on it.
+
+The expected message can be a String, a Regexp, or any object with `===` (so RSpec built-in matchers like `a_string_starting_with("...")` work too). An optional second argument constrains the level.
+
+```ruby
+expect { service.call }.to have_logged_message("Imported")
+expect { service.call }.to have_logged_message(/import/, :warn)
+
+expect { service.call }
+  .to have_logged_message("Imported").with_formatted_event { |event, formatted|
+    expect(event.payload).to include(items: 3)
+    expect(event.named_tags).to include(tenant: 'eu')
+    expect(formatted.dig('http', 'status_code')).to eq(200)
+  }
+```
+
+`with_formatted_event` defaults to the gem's Datadog formatter; pass any `SemanticLogger::Formatters::Base` subclass to use a different one:
+
+```ruby
+.with_formatted_event(SemanticLogger::Formatters::Json) { |event, formatted| ... }
+```
+
+`formatted` is the formatter's JSON output, re-parsed with indifferent access — so both `formatted[:status]` and `formatted['status']` work.
+
+The matcher passes a **duplicated** copy of the log event to the formatter, so a formatter that mutates `log.payload` / `log.named_tags` cannot leak those mutations into the event you receive in the block.
 
 ## Puma Integration
 
