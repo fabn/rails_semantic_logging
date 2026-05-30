@@ -64,6 +64,16 @@ module RailsSemanticLogging
         hash[:status] = log.level
       end
 
+      # Fall back to the exception message when the log carries no message of
+      # its own. rails_semantic_logger logs unmatched routes (and other
+      # rescued exceptions) via ActionDispatch::DebugExceptions by passing only
+      # the exception object, so without this the Datadog `message` field would
+      # be empty for those events.
+      def message
+        super
+        hash[:message] ||= log.exception&.message
+      end
+
       def duration
         # Propagate duration from payload if not set on log
         log.duration = log.payload[:duration] if log.duration.nil? && log.payload&.dig(:duration)
@@ -104,6 +114,10 @@ module RailsSemanticLogging
 
         hash[:http] ||= {}
         hash[:http][:method] ||= match[:method]
+        # The DebugExceptions log carries no HTTP status (there is no completed
+        # request), so map the exception to its canonical status the same way
+        # rails_semantic_logger does (RoutingError => 404).
+        hash[:http][:status_code] ||= ::ActionDispatch::ExceptionWrapper.status_code_for_exception(log.exception.class.name)
         url_details = hash[:http][:url_details] ||= {}
         url_details[:path] ||= match[:path]
       end

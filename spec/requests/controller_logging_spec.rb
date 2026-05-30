@@ -58,7 +58,10 @@ RSpec.describe 'Controller logging' do
         expect(event.exception).to be_a(ActionController::RoutingError)
         expect(formatted.dig('error', 'kind')).to eq('ActionController::RoutingError')
         expect(formatted.dig('error', 'message')).to eq('No route matches [GET] "/products/123/missing"')
+        # message falls back to the exception message instead of staying empty
+        expect(formatted['message']).to eq('No route matches [GET] "/products/123/missing"')
         expect(formatted.dig('http', 'method')).to eq('GET')
+        expect(formatted.dig('http', 'status_code')).to eq(404)
         expect(formatted.dig('http', 'url_details', 'path')).to eq('/products/123/missing')
       }
     end
