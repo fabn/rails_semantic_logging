@@ -7,7 +7,7 @@ Opinionated Rails semantic logger configuration with Datadog support. Provides a
 - **Datadog formatter** with [Standard Attributes](https://docs.datadoghq.com/standard-attributes/) mapping
 - **Default payload enrichment** for controllers (host, user_agent, referer) mapped to `http.*`
 - **JSON formatter** for structured logging without Datadog-specific fields
-- **ActiveJob integration** with named tags (`job_class`, `job_id`, `queue`) instead of array tags
+- **ActiveJob integration** with named tags (`job_class`, `job_id`, `queue`, `executions`, and `provider_job_id` when the adapter assigns one) instead of array tags
 - **Sidekiq integration** with job context in all log lines
 - **Configurable** via [anyway_config](https://github.com/palkan/anyway_config) (YAML, env vars, or code)
 - **Environment-aware** defaults (Datadog JSON in production, color in development, fatal in test)
@@ -174,10 +174,20 @@ wins over the message-derived fields.
   "named_tags": {
     "job_class": "ImportBikesJob",
     "job_id": "abc-123",
-    "queue": "default"
+    "queue": "default",
+    "executions": 0,
+    "provider_job_id": "9632"
   }
 }
 ```
+
+`executions` is the ActiveJob attempt counter (0 on the first run), so retries
+are visible directly in the logs. `provider_job_id` is the queue backend's
+native identifier — the `solid_queue_jobs` row id under Solid Queue, the `jid`
+under Sidekiq — which lets a log line be correlated with the job in Mission
+Control and the backend's own tables. It is only present once the job has been
+enqueued, so synchronous (`perform_now` / `:inline` / `:test`) executions omit
+it.
 
 ### Example: Error log
 
