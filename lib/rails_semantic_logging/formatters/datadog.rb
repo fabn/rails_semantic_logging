@@ -33,6 +33,11 @@ module RailsSemanticLogging
         user_role: :role
       }.freeze
 
+      # Matches ActionController::RoutingError messages like:
+      #   No route matches [GET] "/some/path"
+      # Used to extract http.method and http.url_details.path from the exception.
+      ROUTING_ERROR_MESSAGE = /\ANo route matches \[(?<method>\w+)\]\s+"(?<path>[^"]+)"/
+
       def initialize(time_format: :iso_8601, time_key: :timestamp, **args) # rubocop:disable Naming/VariableNumber
         super(time_format:, time_key:, log_application: false, log_host: true, log_environment: false, **args)
       end
@@ -59,6 +64,16 @@ module RailsSemanticLogging
         hash[:status] = log.level
       end
 
+      # Fall back to the exception message when the log carries no message of
+      # its own. rails_semantic_logger logs unmatched routes (and other
+      # rescued exceptions) via ActionDispatch::DebugExceptions by passing only
+      # the exception object, so without this the Datadog `message` field would
+      # be empty for those events.
+      def message
+        super
+        hash[:message] ||= log.exception&.message
+      end
+
       def duration
         # Propagate duration from payload if not set on log
         log.duration = log.payload[:duration] if log.duration.nil? && log.payload&.dig(:duration)
@@ -78,9 +93,34 @@ module RailsSemanticLogging
           message: log.exception.message,
           stack: log.exception.backtrace&.join("\n")
         }
+
+        parse_routing_error
       end
 
       private
+
+      # Extracts http.method and http.url_details.path from
+      # ActionController::RoutingError messages so logs for unmatched routes
+      # are still correlated with the request URL in Datadog.
+      #
+      # rails_semantic_logger patches ActionDispatch::DebugExceptions to log the
+      # real exception object, so unmatched-route requests reach this formatter
+      # as a RoutingError carrying a message like: No route matches [GET] "/foo".
+      def parse_routing_error
+        # Fully qualified so the constant resolves to Rails' ActionController and
+        # not the gem's own RailsSemanticLogging::ActionController namespace.
+        return unless log.exception.is_a?(::ActionController::RoutingError)
+        return unless (match = ROUTING_ERROR_MESSAGE.match(log.exception.message))
+
+        hash[:http] ||= {}
+        hash[:http][:method] ||= match[:method]
+        # The DebugExceptions log carries no HTTP status (there is no completed
+        # request), so map the exception to its canonical status the same way
+        # rails_semantic_logger does (RoutingError => 404).
+        hash[:http][:status_code] ||= ::ActionDispatch::ExceptionWrapper.status_code_for_exception(log.exception.class.name)
+        url_details = hash[:http][:url_details] ||= {}
+        url_details[:path] ||= match[:path]
+      end
 
       # Parses http.url into url_details with host, path and queryString
       def parse_url_details

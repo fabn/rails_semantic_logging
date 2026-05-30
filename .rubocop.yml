@@ -40,7 +40,7 @@ RSpec/AnyInstance:
   Enabled: false
 
 RSpec/ExampleLength:
-  Max: 10
+  Max: 12
   CountAsOne: ['array', 'hash', 'heredoc']
 
 RSpec/MessageSpies:
@@ -77,7 +77,7 @@ Metrics/AbcSize:
   Enabled: false
 
 Metrics/ClassLength:
-  Max: 120
+  Max: 140
 
 Metrics/BlockLength:
   Enabled: false
