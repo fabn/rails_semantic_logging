@@ -44,6 +44,16 @@ module RailsSemanticLogging
 
       def call(log, logger)
         super
+        # SemanticLogger::Formatters::Raw assigns log.payload and log.named_tags
+        # to hash[:payload] / hash[:named_tags] BY REFERENCE. We mutate those
+        # below (remap_http_payload deletes :host/:method/etc., remap_named_tags
+        # deletes :request_id/:client_ip/:dd/etc., deep_compact_blank! drops
+        # every blank value). Without these dups the formatter strips keys off
+        # the underlying log event, which breaks any consumer that reads
+        # log.payload / log.named_tags after formatting (other appenders,
+        # RSpec matchers that re-inspect the captured event).
+        hash[:payload] = hash[:payload].dup if hash[:payload].is_a?(Hash)
+        hash[:named_tags] = hash[:named_tags].dup if hash[:named_tags].is_a?(Hash)
         remap_named_tags
         remap_http_payload
         parse_url_details
@@ -95,6 +105,16 @@ module RailsSemanticLogging
         }
 
         parse_routing_error
+      end
+
+      # SemanticLogger's :dimensions log attribute carries metric tags
+      # (e.g. `logger.info('Processed feed', metric: 'feed_size', metric_amount: 12,
+      # dimensions: { feed: 'amazon' })`). The Raw formatter sets :metric and
+      # :metric_amount but not :dimensions — surface it at the top level so the
+      # Datadog UI can filter on those tags directly without diving into named_tags.
+      def metric
+        super
+        hash[:dimensions] = log.dimensions if log.dimensions.respond_to?(:any?) && log.dimensions.any?
       end
 
       private
@@ -216,13 +236,24 @@ module RailsSemanticLogging
         hash[:http].is_a?(Hash) ? hash[:http].merge!(http) : hash[:http] = http
       end
 
-      # Recursively removes blank values from a hash
+      # Recursively removes empty values from a hash. nil, "", [], {} are dropped
+      # to keep the log payload tidy, but `false` and `0` are kept because they
+      # are meaningful values in things like `bot: false` or `count: 0`.
+      # (ActiveSupport's `blank?` treats `false` as blank, which would silently
+      # strip boolean flags from payloads.)
       def deep_compact_blank!(h)
         h.each do |key, value|
           deep_compact_blank!(value) if value.is_a?(Hash)
-          h.delete(key) if value.blank?
+          h.delete(key) if blank_value?(value)
         end
         h
+      end
+
+      def blank_value?(value)
+        return true if value.nil?
+        return value.empty? if value.respond_to?(:empty?)
+
+        false
       end
     end
   end
