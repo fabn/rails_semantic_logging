@@ -11,25 +11,32 @@ module RailsSemanticLogging
     # This ensures our configuration is applied before the logger is set up.
     initializer 'rails_semantic_logging.configure', before: :initialize_logger do |app|
       cfg = RailsSemanticLogging.config
+      formatter = cfg.formatter_for(Rails.env)
 
-      # Configure rails_semantic_logger options
       app.config.rails_semantic_logger.quiet_assets = cfg.quiet_assets
-      app.config.rails_semantic_logger.console_logger = false
-      app.config.rails_semantic_logger.add_file_appender = false
 
-      # Set formatter based on environment
-      app.config.rails_semantic_logger.format = cfg.formatter_for(Rails.env)
+      # Declare a single stdout appender with the configured formatter.
+      # IMPORTANT: Do NOT pass level: parameter. Subscriber#level defaults to :trace
+      # when unset, which is required by the host app's spec/support/output.rb check.
+      if app.config.rails_semantic_logger.respond_to?(:appenders?)
+        # rails_semantic_logger >= 5: declaring an appender replaces the default
+        # file appender and the automatic console stderr appender.
+        app.config.rails_semantic_logger.appenders do |appenders|
+          appenders.add(io: $stdout, formatter: formatter)
+        end
+      else
+        # rails_semantic_logger 4.x: disable the built-in appenders and add ours.
+        app.config.rails_semantic_logger.console_logger = false
+        app.config.rails_semantic_logger.add_file_appender = false
+        app.config.rails_semantic_logger.format = formatter
+        app.config.semantic_logger.add_appender(io: $stdout, formatter: formatter)
+      end
 
       # Merge default tags (request_id, client_ip) with app-specific custom tags
       app.config.log_tags = cfg.effective_log_tags
 
       # Set log level based on environment, respecting LOG_LEVEL env var
       app.config.log_level = cfg.log_level_for(Rails.env)
-
-      # Add stdout appender with the configured formatter.
-      # IMPORTANT: Do NOT pass level: parameter. Subscriber#level defaults to :trace
-      # when unset, which is required by the host app's spec/support/output.rb check.
-      app.config.semantic_logger.add_appender(io: $stdout, formatter: app.config.rails_semantic_logger.format)
     end
 
     config.to_prepare do
