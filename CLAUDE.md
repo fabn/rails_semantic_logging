@@ -29,7 +29,7 @@ LOG=all LOG_LEVEL=debug bundle exec rspec spec/path  # Control log level
 
 ### CI Matrix
 
-Tests run against Ruby 3.2/3.3/3.4 x Rails 7.1/7.2/8.0/8.1 via [Appraisal](https://github.com/thoughtbot/appraisal). Variants are declared in the `Appraisals` file: Rails 7.1 is pinned to `rails_semantic_logger` 4.x (5.x requires railties >= 7.2), all newer Rails run against 5.x. The generated `gemfiles/*.gemfile` are committed; regenerate them with `bundle exec appraisal generate` after changing the `Gemfile` or `Appraisals`.
+Tests run against Ruby 3.2/3.3/3.4 x Rails 7.1/7.2/8.0/8.1 via [Appraisal](https://github.com/thoughtbot/appraisal), on a reduced matrix (edges, not the full cross product: every Rails on Ruby 3.4, every Ruby on Rails 8.1, plus Ruby 3.2 + Rails 7.1). Variants are declared in the `Appraisals` file: Rails 7.1 is pinned to `rails_semantic_logger` 4.x (5.x requires railties >= 7.2), all newer Rails run against 5.x. The generated `gemfiles/*.gemfile` are committed; regenerate them with `bundle exec appraisal generate` after changing the `Gemfile` or `Appraisals`.
 
 ```bash
 bundle exec appraisal install                 # Bundle every variant (once, or after dependency changes)
