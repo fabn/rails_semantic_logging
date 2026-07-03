@@ -13,6 +13,7 @@ AllCops:
   TargetRubyVersion: 3.2
   Exclude:
     - 'bin/**/*'
+    - 'gemfiles/**/*'
     - 'spec/dummy/**/*'
 
 Style/BlockDelimiters:

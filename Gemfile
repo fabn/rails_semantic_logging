@@ -2,9 +2,9 @@ source 'https://rubygems.org'
 
 gemspec
 
-rails_version = ENV.fetch('RAILS_VERSION', nil)
-gem 'rails', rails_version ? "~> #{rails_version}.0" : '>= 7.1'
+gem 'rails', '>= 7.1'
 
+gem 'appraisal', '~> 2.5'
 gem 'rspec-rails', '~> 6.0'
 gem 'rubocop', '~> 1.50'
 gem 'rubocop-performance'

@@ -19,12 +19,14 @@ RSpec.describe RailsSemanticLogging::RSpec::Helpers do
 
     it 'with_logging enables log output at given level' do
       logger = SemanticLogger['HelpersTest']
-      logged = false
-      with_logging(:info) do
-        logger.info('test message')
-        logged = true
-      end
-      expect(logged).to be true
+      expect { with_logging(:info) { logger.info('test message') } }
+        .to log_semantic(level: :info, message: 'test message')
+    end
+
+    it 'with_logging suppresses logs below the given level' do
+      logger = SemanticLogger['HelpersTest']
+      expect { with_logging(:warn) { logger.info('below threshold') } }
+        .to_not log_semantic(message: 'below threshold')
     end
   end
 

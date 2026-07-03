@@ -22,6 +22,47 @@ module RailsSemanticLogging
       end
     end
 
+    # Shared capture plumbing for the block matchers. Opens the logger gate to
+    # :trace so every event reaches the in-memory capture appender, while
+    # pinning the pre-existing appenders to the previously *visible* threshold
+    # (default_level, or an active SemanticLogger.silence override such as the
+    # LOG env var hook) so widening the gate does not spill every captured
+    # event to stdout.
+    module CaptureAppender
+      module_function
+
+      def with_capture_appender(capture)
+        previous_level = ::SemanticLogger.default_level
+        pinned = pin_live_appenders(visible_level(previous_level))
+        ::SemanticLogger.add_appender(appender: capture)
+        ::SemanticLogger.default_level = :trace
+        yield
+        ::SemanticLogger.flush
+      ensure
+        ::SemanticLogger.default_level = previous_level
+        pinned&.each { |appender, level| appender.level = level }
+        ::SemanticLogger.remove_appender(capture)
+      end
+
+      # Pins every live appender to +level+, returning the [appender, original_level]
+      # pairs needed to restore them afterwards.
+      def pin_live_appenders(level)
+        ::SemanticLogger.appenders.to_a.map do |appender|
+          original = appender.level
+          appender.level = level
+          [appender, original]
+        end
+      end
+
+      # The threshold actually in effect before the matcher widened the gate:
+      # a SemanticLogger.silence override (stored as a level index in a
+      # thread-local by both semantic_logger 4.x and 5.x) wins over default_level.
+      def visible_level(default_level)
+        silence_index = Thread.current[:semantic_logger_silence]
+        silence_index ? ::SemanticLogger::Levels::LEVELS[silence_index] : default_level
+      end
+    end
+
     # RSpec matcher for asserting log output from a block.
     #
     # Usage:
@@ -38,14 +79,7 @@ module RailsSemanticLogging
 
       def matches?(block)
         appender = InMemoryAppender.new
-        SemanticLogger.add_appender(appender: appender)
-        # Temporarily lower log level to capture all messages
-        previous_level = SemanticLogger.default_level
-        SemanticLogger.default_level = :trace
-        block.call
-        SemanticLogger.flush
-        SemanticLogger.default_level = previous_level
-        SemanticLogger.remove_appender(appender)
+        CaptureAppender.with_capture_appender(appender) { block.call }
 
         @captured_logs = appender.logs
         @captured_logs.any? { |log| matches_log?(log) }
@@ -203,19 +237,8 @@ module RailsSemanticLogging
 
       def capture_first_matching_event(block)
         capture = InMemoryAppender.new
-        with_capture_appender(capture) { block.call }
+        CaptureAppender.with_capture_appender(capture) { block.call }
         capture.logs.find { |evt| message_matches?(evt.message) }
-      end
-
-      def with_capture_appender(capture)
-        ::SemanticLogger.add_appender(appender: capture)
-        previous_level = ::SemanticLogger.default_level
-        ::SemanticLogger.default_level = :trace
-        yield
-        ::SemanticLogger.flush
-      ensure
-        ::SemanticLogger.default_level = previous_level
-        ::SemanticLogger.remove_appender(capture)
       end
 
       # Matches String, Regex and any object that implements `===` (incl. RSpec
