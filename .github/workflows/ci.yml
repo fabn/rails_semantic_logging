@@ -18,9 +18,9 @@ jobs:
       fail-fast: false
       matrix:
         ruby: ['3.2', '3.3', '3.4']
-        rails: ['7.1', '7.2', '8.0']
+        rails: ['7.1', '7.2', '8.0', '8.1']
     env:
-      RAILS_VERSION: ${{ matrix.rails }}
+      BUNDLE_GEMFILE: gemfiles/rails_${{ matrix.rails }}.gemfile
     steps:
       - uses: actions/checkout@v6
       - uses: ruby/setup-ruby@v1
