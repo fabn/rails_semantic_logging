@@ -21,12 +21,27 @@ RSpec.describe RailsSemanticLogging::Railtie do
       expect(Rails.application.config.rails_semantic_logger.quiet_assets).to be false
     end
 
-    it 'disables console_logger' do
-      expect(Rails.application.config.rails_semantic_logger.console_logger).to be false
-    end
+    if Rails.application.config.rails_semantic_logger.respond_to?(:appenders?)
+      # rails_semantic_logger >= 5: declaring appenders replaces the default
+      # file appender and the automatic console stderr appender.
+      it 'declares its own appenders' do
+        expect(Rails.application.config.rails_semantic_logger.appenders?).to be true
+      end
 
-    it 'disables file_appender' do
-      expect(Rails.application.config.rails_semantic_logger.add_file_appender).to be false
+      it 'declares no extra server or console context appenders' do
+        appenders = Rails.application.config.rails_semantic_logger.appenders
+        expect(appenders.server).to be_empty
+        expect(appenders.console).to be_empty
+      end
+    else
+      # rails_semantic_logger 4.x
+      it 'disables console_logger' do
+        expect(Rails.application.config.rails_semantic_logger.console_logger).to be false
+      end
+
+      it 'disables file_appender' do
+        expect(Rails.application.config.rails_semantic_logger.add_file_appender).to be false
+      end
     end
 
     it 'includes request_id in log_tags' do

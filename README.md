@@ -279,7 +279,10 @@ The matcher passes a **duplicated** copy of the log event to the formatter, so a
 
 ## Puma Integration
 
-When using Puma in clustered mode, reopen log appenders after forking:
+With `semantic_logger` >= 5 appenders are reopened automatically after forking, so no Puma
+configuration is needed (opt out with `SemanticLogger.reopen_on_fork = false`).
+
+When still on `semantic_logger` 4.x, reopen log appenders after forking in clustered mode:
 
 ```ruby
 # config/puma.rb
