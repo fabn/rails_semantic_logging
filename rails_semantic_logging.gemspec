@@ -22,5 +22,9 @@ Gem::Specification.new do |spec|
 
   spec.add_dependency 'anyway_config', '~> 2.0'
   spec.add_dependency 'rails', '>= 7.1', '< 9'
-  spec.add_dependency 'rails_semantic_logger', '>= 4.0', '< 6'
+  # 4.18.0 is the first release with the Sidekiq ERROR_HANDLER fix
+  # (https://github.com/reidmorrison/rails_semantic_logger/pull/265): earlier
+  # versions crash with "undefined method 'logger' for module
+  # RailsSemanticLogger::Sidekiq" when handling errors without a job context.
+  spec.add_dependency 'rails_semantic_logger', '>= 4.18', '< 6'
 end
