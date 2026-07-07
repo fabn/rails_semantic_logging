@@ -2,7 +2,7 @@
 # (5.x requires railties >= 7.2), so it exercises the legacy Railtie path.
 appraise 'rails-7.1' do
   gem 'rails', '~> 7.1.0'
-  gem 'rails_semantic_logger', '~> 4.17'
+  gem 'rails_semantic_logger', '~> 4.18'
 end
 
 appraise 'rails-7.2' do
