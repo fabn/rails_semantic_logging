@@ -2,7 +2,7 @@ source 'https://rubygems.org'
 
 gemspec
 
-gem 'rails', '>= 7.1'
+gem 'rails', '>= 7.2'
 
 gem 'appraisal', '~> 2.5'
 gem 'rspec-rails', '~> 6.0'
