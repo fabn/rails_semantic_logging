@@ -294,8 +294,9 @@ require 'rails_semantic_logging/puma'
 RailsSemanticLogging::Puma.activate(self)
 ```
 
-`Puma starting in single mode...`, `* Puma version`, `* Listening on`,
-`Use Ctrl-C to stop`, `- Gracefully stopping...` and friends then go through the
+`Puma starting in single mode...`, `* Puma version`, `* Ruby version`,
+`* Min/Max threads`, `* Environment`, `* PID`, `* Listening on`,
+`* Starting control server` and `Use Ctrl-C to stop` then go through the
 configured formatter under the logger name `Puma` (override with
 `activate(self, logger_name: '...')`), so they can be selected with
 `logger.name:Puma` alongside the rest of the application logs.
