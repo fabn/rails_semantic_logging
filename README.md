@@ -279,6 +279,55 @@ The matcher passes a **duplicated** copy of the log event to the formatter, so a
 
 ## Puma Integration
 
+### Routing Puma's own output through SemanticLogger
+
+Puma writes its boot banner and lifecycle lines straight to stdout, so they stay
+plain text while everything else in the app is structured. In a container that
+means one unparsed event per line, carrying none of the attributes the rest of
+your logs have.
+
+Opt in from `config/puma.rb`:
+
+```ruby
+# config/puma.rb
+require 'rails_semantic_logging/puma'
+RailsSemanticLogging::Puma.activate(self)
+```
+
+`Puma starting in single mode...`, `* Puma version`, `* Ruby version`,
+`* Min/Max threads`, `* Environment`, `* PID`, `* Listening on`,
+`* Starting control server` and `Use Ctrl-C to stop` then go through the
+configured formatter under the logger name `Puma` (override with
+`activate(self, logger_name: '...')`), so they can be selected with
+`logger.name:Puma` alongside the rest of the application logs.
+
+Requires **Puma >= 6.2.0**, which introduced the `custom_logger` DSL option. On
+older versions `activate` returns `false` and changes nothing, so it is safe to
+leave in a shared config.
+
+It has to be called from `config/puma.rb` rather than wired automatically by the
+Railtie: `custom_logger` lives on Puma's configuration DSL, which only exists
+while that file is being evaluated. By the time Rails boots, `Puma::Launcher`
+has already read the option.
+
+Two things it deliberately does not cover:
+
+- The `=> Booting Puma` / `=> Rails ... starting` / `=> Run bin/rails server --help`
+  lines. Those come from `Rails::Command::ServerCommand#print_boot_information`,
+  which writes to `$stdout` through Thor's `say` with no logger in between.
+- Under `puma -C config/puma.rb` (as opposed to `rails server`) the banner is
+  emitted before Rails is loaded, so no appender exists yet. Rather than let
+  SemanticLogger drop those lines silently, the adapter falls back to writing
+  them to stdout until an appender is registered.
+- `- Gracefully stopping, waiting for requests to finish` is logged from inside
+  Puma's SIGTERM trap handler, and Ruby forbids `Mutex#synchronize` in a trap
+  context — which SemanticLogger reaches, directly or through the `datadog`
+  gem's SemanticLogger instrumentation. The adapter catches that and writes the
+  line to stdout instead, so a log line can never abort a shutdown. Since
+  SIGTERM is how containers are stopped, this one matters.
+
+### Forking and appender reopen
+
 With `semantic_logger` >= 5 appenders are reopened automatically after forking, so no Puma
 configuration is needed (opt out with `SemanticLogger.reopen_on_fork = false`).
 
