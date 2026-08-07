@@ -318,6 +318,12 @@ Two things it deliberately does not cover:
   emitted before Rails is loaded, so no appender exists yet. Rather than let
   SemanticLogger drop those lines silently, the adapter falls back to writing
   them to stdout until an appender is registered.
+- `- Gracefully stopping, waiting for requests to finish` is logged from inside
+  Puma's SIGTERM trap handler, and Ruby forbids `Mutex#synchronize` in a trap
+  context — which SemanticLogger reaches, directly or through the `datadog`
+  gem's SemanticLogger instrumentation. The adapter catches that and writes the
+  line to stdout instead, so a log line can never abort a shutdown. Since
+  SIGTERM is how containers are stopped, this one matters.
 
 ### Forking and appender reopen
 

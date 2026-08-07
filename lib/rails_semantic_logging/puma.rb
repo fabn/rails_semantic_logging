@@ -51,6 +51,16 @@ module RailsSemanticLogging
         else
           @logger.info(message)
         end
+      rescue StandardError
+        # Puma logs "- Gracefully stopping, waiting for requests to finish"
+        # from inside its SIGTERM trap handler (Single#stop_blocked, reached
+        # from Launcher#setup_signals). Ruby forbids Mutex#synchronize in a
+        # trap context, and SemanticLogger reaches one — directly or through
+        # the datadog gem's SemanticLogger instrumentation — which raises
+        # ThreadError and aborts the shutdown. Since SIGTERM is how containers
+        # are stopped, a log line must never be able to take the server down:
+        # emit it plainly and carry on.
+        $stdout.puts(message)
       end
     end
 

@@ -66,6 +66,28 @@ RSpec.describe RailsSemanticLogging::Puma do
           .to output("* Listening on http://0.0.0.0:3000\n").to_stdout
       end
     end
+
+    # Puma logs the graceful-stop line from inside its SIGTERM trap handler,
+    # where Ruby forbids Mutex#synchronize — which SemanticLogger reaches. A
+    # log line must never be able to abort a shutdown.
+    context 'when the logger raises, as it does in a trap context' do
+      subject(:adapter) { described_class.new(logger) }
+
+      let(:logger) { instance_double(SemanticLogger::Logger) }
+
+      before do
+        allow(logger).to receive(:info).and_raise(ThreadError, "can't be called from trap context")
+      end
+
+      it 'does not propagate the error' do
+        expect { adapter.write('- Gracefully stopping') }.to_not raise_error
+      end
+
+      it 'still emits the line on stdout' do
+        expect { adapter.write('- Gracefully stopping') }
+          .to output("- Gracefully stopping\n").to_stdout
+      end
+    end
   end
 
   # Drives the real collaborator rather than the adapter alone: what matters is
